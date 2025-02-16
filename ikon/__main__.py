@@ -149,7 +149,7 @@ async def main() -> None:
     await tab.sleep(3)
 
     # Check if "Make a Reservation" button is present to detect logged-in state
-    reservation_btn = await tab.select(
+    reservation_btn = await tab.query_selector(
         'a[data-testid="button"][href="/myaccount/reservations/add/"]'
     )
 
@@ -159,7 +159,9 @@ async def main() -> None:
         # Proceed with login steps
         email_input = await tab.select('input[name="email"]')
         password_input = await tab.select('input[name="password"]')
-        login_button = await tab.find("Log In", best_match=True)
+        login_button = await tab.select(
+            'button[type="submit"][class*="button"]:not(:empty)'
+        )
 
         if not email_input or not password_input or not login_button:
             logger.error("Could not locate login fields. Adjust selectors as needed.")
@@ -178,7 +180,7 @@ async def main() -> None:
         await tab.sleep(5)
 
         # After logging in, try to find the "Make a Reservation" button again
-        reservation_btn = await tab.select(
+        reservation_btn = await tab.query_selector(
             'a[data-testid="button"][href="/myaccount/reservations/add/"]'
         )
         if not reservation_btn:
