@@ -25,7 +25,7 @@ async def main() -> None:
       • TWILIO_ACCOUNT_SID
       • TWILIO_AUTH_TOKEN
       • TWILIO_PHONE_NUMBER
-      • USER_PHONE_NUMBER
+      • USER_PHONE_NUMBERS  : Comma-separated list, e.g. "+15551234567,+15557654321"
     """
 
     # Fetch configuration from environment variables
@@ -44,7 +44,7 @@ async def main() -> None:
     twilio_account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
     twilio_auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
     twilio_phone_number = os.environ.get("TWILIO_PHONE_NUMBER")
-    user_phone_number = os.environ.get("USER_PHONE_NUMBER")
+    user_phone_numbers = os.environ.get("USER_PHONE_NUMBER")
     # If any of these are missing, exit immediately
     if not all(
         [
@@ -57,7 +57,7 @@ async def main() -> None:
             twilio_account_sid,
             twilio_auth_token,
             twilio_phone_number,
-            user_phone_number,
+            user_phone_numbers,
         ]
     ):
         print("One or more environment variables are missing. Exiting.")
@@ -67,6 +67,12 @@ async def main() -> None:
     DESIRED_DATES = [d.strip() for d in desired_dates_str.split(",") if d.strip()]
     if not DESIRED_DATES:
         print("DESIRED_DATES environment variable is empty or invalid. Exiting.")
+        return
+
+    assert user_phone_numbers is not None
+    USER_PHONE_NUMBERS = [p.strip() for p in user_phone_numbers.split(",") if p.strip()]
+    if not USER_PHONE_NUMBERS:
+        print("USER_PHONE_NUMBERS environment variable is empty or invalid. Exiting.")
         return
 
     # Create the Twilio client
@@ -186,12 +192,13 @@ async def main() -> None:
             msg_text = "\n".join(lines)
             print(msg_text)
 
-            # Send via Twilio
-            client.messages.create(
-                from_=twilio_phone_number,
-                to=user_phone_number,
-                body=msg_text,
-            )
+            for user_phone_number in USER_PHONE_NUMBERS:
+                # Send via Twilio
+                client.messages.create(
+                    from_=twilio_phone_number,
+                    to=user_phone_number,
+                    body=msg_text,
+                )
         else:
             print("No availability found for desired dates.")
 

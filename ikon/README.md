@@ -28,7 +28,8 @@ For Twilio notifications:
 - **TWILIO_ACCOUNT_SID**: Your Twilio account identifier.
 - **TWILIO_AUTH_TOKEN**: Your Twilio account secret, used to authenticate API requests.
 - **TWILIO_PHONE_NUMBER**: The Twilio phone number from which SMS alerts will be sent.
-- **USER_PHONE_NUMBER**: The phone number to which SMS alerts will be sent.
+- **USER_PHONE_NUMBERs**: A comma-separated list of phone numbers to which SMS alerts will be sent. For example:
+  `USER_PHONE_NUMBERS="+15555555555,+16666666666"`
 
 ## Running the Scraper
 

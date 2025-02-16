@@ -10,6 +10,9 @@ export LOGIN_PASSWORD=
 export LOGIN_URL=
 # URL to call to call via `fetch` in browser console to get the desired data.
 export FETCH_URL=
+# The desired dates to search for. This is a comma-separated list of dates in
+# the format `YYYY-MM-DD`. For example, `2021-01-01,2021-01-02`.
+export DESIRES_DATES=
 
 # We use Twilio to automate notifications to the "user" (you) when the scraper
 # finds something of value.
@@ -20,5 +23,7 @@ export TWILIO_ACCOUNT_SID=
 export TWILIO_AUTH_TOKEN=
 # The Twilio phone number from which SMS alerts will be sent.
 export TWILIO_PHONE_NUMBER=
-# The phone number to which SMS alerts will be sent.
-export USER_PHONE_NUMBER=
+# The phone numbers to which SMS alerts will be sent. This is a comma-separated
+# list of phone numbers in the format `+1XXXXXXXXXX`. For example,
+# `+15555555555,+16666666666`.
+export USER_PHONE_NUMBERS=
