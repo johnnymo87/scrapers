@@ -29,31 +29,25 @@ async def main() -> None:
     chrome_data_dir = os.environ["CHROME_DATA_DIR"]
 
     # Twilio / SMS-related env vars
-    twilio_account_sid = os.getenv("TWILIO_ACCOUNT_SID")
-    twilio_auth_token = os.getenv("TWILIO_AUTH_TOKEN")
-    twilio_phone_number = os.getenv("TWILIO_PHONE_NUMBER")
-    user_phone_number = os.getenv("USER_PHONE_NUMBER")
-
-    # Attempt to create a Twilio client (if all vars are present)
-    client = None
-    if (
-        twilio_account_sid
-        and twilio_auth_token
-        and twilio_phone_number
-        and user_phone_number
+    twilio_account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
+    twilio_auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
+    twilio_phone_number = os.environ.get("TWILIO_PHONE_NUMBER")
+    user_phone_number = os.environ.get("USER_PHONE_NUMBER")
+    # If any of these are missing, exit immediately
+    if not all(
+        [twilio_account_sid, twilio_auth_token, twilio_phone_number, user_phone_number]
     ):
-        client = Client(twilio_account_sid, twilio_auth_token)
-    else:
-        print(
-            "One or more Twilio environment variables are missing. "
-            "Will not attempt to send SMS messages."
-        )
+        print("One or more Twilio environment variables are missing. Exiting.")
+        return
+
+    # Create the Twilio client
+    client = Client(twilio_account_sid, twilio_auth_token)
 
     # Start the "nodriver" browser in undetected Chrome mode
     browser = await uc.start(user_data_dir=chrome_data_dir)
 
     #
-    # 1. Navigate to the login page
+    # 1. Log in.
     #
     tab = await browser.get(login_url)
 
@@ -99,79 +93,86 @@ async def main() -> None:
             browser.stop()
             return
 
-    #
-    # 2. Perform a raw fetch request via JavaScript to get data
-    #
-    result = await tab.evaluate(
-        """
-    fetch("https://account.ikonpass.com/api/v2/reservation-availability/88", {
-      method: "GET",
-      credentials: "include"
-    })
-    .then(r => r.text());
-    """,
-        await_promise=True,
-    )
-    # print("Raw JSON result from reservation-availability API:\n", result)
+    print("Login successful (or already logged in). Beginning repeated checks...")
 
-    #
-    # 3. Parse the JSON and check for dates of interest
-    #
+    # Our desired dates for availability checks
     DESIRED_DATES = ["2025-03-01"]
 
-    try:
-        data = json.loads(result)
-    except json.JSONDecodeError:
-        print("Unable to parse JSON from API. Exiting.")
-        browser.stop()
-        return
+    while True:
+        #
+        # 2. Perform a raw fetch request via JavaScript to get data
+        #
+        result = await tab.evaluate(
+            """
+            fetch("https://account.ikonpass.com/api/v2/reservation-availability/88", {
+              method: "GET",
+              credentials: "include"
+            })
+            .then(r => r.text());
+            """,
+            await_promise=True,
+        )
 
-    # We'll collect availability information here
-    availability_found: dict[str, list[str]] = {}
-    if "data" not in data:
-        print("JSON has no top-level 'data' key. Exiting.")
-        browser.stop()
-        return
-
-    for pass_info in data["data"]:
-        pass_id = pass_info.get("id")
-        # Only proceed if you can still make reservations for this pass
-        if pass_info.get("reservations_available", 0) < 1:
+        #
+        # 3. Parse the JSON and check for dates of interest
+        #
+        try:
+            data = json.loads(result)
+        except json.JSONDecodeError:
+            print("Unable to parse JSON from API. Will retry in 5 minutes.")
+            await tab.sleep(300)
             continue
 
-        closed_dates = pass_info.get("closed_dates", [])
-        blackout_dates = pass_info.get("blackout_dates", [])
-        unavailable_dates = pass_info.get("unavailable_dates", [])
+        if "data" not in data:
+            print("JSON has no top-level 'data' key. Will retry in 5 minutes.")
+            await tab.sleep(300)
+            continue
 
-        for date_str in DESIRED_DATES:
-            # Simple check: date is "available" if not in closed/blackout/unavailable
-            if (
-                date_str not in closed_dates
-                and date_str not in blackout_dates
-                and date_str not in unavailable_dates
-            ):
-                availability_found.setdefault(pass_id, []).append(date_str)
+        # We'll collect availability information here
+        availability_found: dict[str, list[str]] = {}
 
-    if availability_found:
-        # Build a summary message for all found availability
-        lines = ["Found availability for the following pass IDs and dates:"]
-        for pid, dates in availability_found.items():
-            lines.append(f"  - Pass ID {pid}: {dates}")
-        msg_text = "\n".join(lines)
+        for pass_info in data["data"]:
+            pass_id = pass_info.get("id")
+            # Only proceed if you can still make reservations for this pass
+            if pass_info.get("reservations_available", 0) < 1:
+                continue
 
-        print(msg_text)
-        # Attempt to send via Twilio if client is set up
-        if client:
+            closed_dates = pass_info.get("closed_dates", [])
+            blackout_dates = pass_info.get("blackout_dates", [])
+            unavailable_dates = pass_info.get("unavailable_dates", [])
+
+            for date_str in DESIRED_DATES:
+                # Simple check: date is "available" if not in closed / blackout
+                # / unavailable.
+                if (
+                    date_str not in closed_dates
+                    and date_str not in blackout_dates
+                    and date_str not in unavailable_dates
+                ):
+                    availability_found.setdefault(pass_id, []).append(date_str)
+
+        if availability_found:
+            # Build a summary message for all found availability
+            lines = ["Found availability for the following pass IDs and dates:"]
+            for pid, dates in availability_found.items():
+                lines.append(f"  - Pass ID {pid}: {dates}")
+
+            msg_text = "\n".join(lines)
+            print(msg_text)
+
+            # Send via Twilio (now guaranteed to be set up)
             client.messages.create(
-                from_=twilio_phone_number, to=user_phone_number, body=msg_text
+                from_=twilio_phone_number,
+                to=user_phone_number,
+                body=msg_text,
             )
-    else:
-        print("No availability found for desired dates.")
+        else:
+            print("No availability found for desired dates.")
 
-    print("Done. Sleeping for demonstration...")
+        print("Sleeping for 5 minutes before the next check...")
+        await tab.sleep(300)
 
-    # Shutdown
-    browser.stop()
+    # No browser.stop() here – we never exit the loop unless manually interrupted.
 
 
 if __name__ == "__main__":
