@@ -14,6 +14,7 @@ async def main() -> None:
       • SCRAPER_PASSWORD    : e.g. "MyP@ssw0rd!"
       • LOGIN_URL           : e.g. "https://example.com/login"
       • CHROME_DATA_DIR     : e.g. "/path/to/some/chrome_profile_dir"
+      • DESIRED_DATES       : Comma-separated list, e.g. "2025-03-01,2025-03-02"
 
       For Twilio alerts:
       • TWILIO_ACCOUNT_SID
@@ -38,6 +39,17 @@ async def main() -> None:
         [twilio_account_sid, twilio_auth_token, twilio_phone_number, user_phone_number]
     ):
         print("One or more Twilio environment variables are missing. Exiting.")
+        return
+
+    # Desired dates env var
+    desired_dates_str = os.environ.get("DESIRED_DATES")
+    if not desired_dates_str:
+        print("DESIRED_DATES environment variable is missing. Exiting.")
+        return
+
+    DESIRED_DATES = [d.strip() for d in desired_dates_str.split(",") if d.strip()]
+    if not DESIRED_DATES:
+        print("DESIRED_DATES environment variable is empty or invalid. Exiting.")
         return
 
     # Create the Twilio client
@@ -94,9 +106,6 @@ async def main() -> None:
             return
 
     print("Login successful (or already logged in). Beginning repeated checks...")
-
-    # Our desired dates for availability checks
-    DESIRED_DATES = ["2025-03-01"]
 
     while True:
         #
@@ -160,7 +169,7 @@ async def main() -> None:
             msg_text = "\n".join(lines)
             print(msg_text)
 
-            # Send via Twilio (now guaranteed to be set up)
+            # Send via Twilio
             client.messages.create(
                 from_=twilio_phone_number,
                 to=user_phone_number,
