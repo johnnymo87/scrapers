@@ -3,13 +3,40 @@ import logging
 import os
 
 import nodriver as uc  # type: ignore[import-untyped]
-from twilio.rest import Client  # type: ignore[import-untyped]
+import requests
 
 # Configure logging at the module level
 logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+
+def send_sinch_sms(
+    sinch_service_plan_id: str,
+    sinch_api_token: str,
+    sinch_phone_number: str,
+    to_number: str,
+    body: str,
+) -> None:
+    """
+    Sends an SMS message using Sinch's REST API.
+    """
+    url = f"https://us.sms.api.sinch.com/xms/v1/{sinch_service_plan_id}/batches"
+    payload = {
+        "from": sinch_phone_number,
+        "to": [to_number],
+        "body": body,
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {sinch_api_token}",
+    }
+    response = requests.post(url, json=payload, headers=headers)
+    if response.status_code != 201:
+        logger.warning("Failed to send to %s: %s", to_number, response.text)
+    else:
+        logger.info("Sent SMS to %s: %s", to_number, body)
 
 
 async def main() -> None:
@@ -28,29 +55,26 @@ async def main() -> None:
           "https://account.ikonpass.com/api/v2/reservation-availability/88"
       • DESIRED_DATES       : Comma-separated list, e.g. "2025-03-01,2025-03-02"
 
-      For Twilio alerts:
-      • TWILIO_ACCOUNT_SID
-      • TWILIO_AUTH_TOKEN
-      • TWILIO_PHONE_NUMBER
-      • USER_PHONE_NUMBERS  : Comma-separated list, e.g. "+15551234567,+15557654321"
+      For Sinch alerts:
+      • SINCH_SERVICE_PLAN_ID
+      • SINCH_API_TOKEN
+      • SINCH_PHONE_NUMBER
+      • USER_PHONE_NUMBERS
     """
 
     # Fetch configuration from environment variables
-
-    # Scraper-specific env vars
     chrome_data_dir = os.environ.get("CHROME_DATA_DIR")
 
-    # Ikon-specific env vars
     login_email = os.environ.get("LOGIN_EMAIL")
     login_password = os.environ.get("LOGIN_PASSWORD")
     login_url = os.environ.get("LOGIN_URL")
     fetch_url = os.environ.get("FETCH_URL")
     desired_dates_str = os.environ.get("DESIRED_DATES")
 
-    # Twilio / SMS-related env vars
-    twilio_account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
-    twilio_auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
-    twilio_phone_number = os.environ.get("TWILIO_PHONE_NUMBER")
+    # Sinch / SMS-related env vars
+    sinch_service_plan_id = os.environ.get("SINCH_SERVICE_PLAN_ID")
+    sinch_api_token = os.environ.get("SINCH_API_TOKEN")
+    sinch_phone_number = os.environ.get("SINCH_PHONE_NUMBER")
     user_phone_numbers = os.environ.get("USER_PHONE_NUMBERS")
 
     # Collect and check for missing or empty env vars
@@ -61,9 +85,9 @@ async def main() -> None:
         "LOGIN_URL": login_url,
         "FETCH_URL": fetch_url,
         "DESIRED_DATES": desired_dates_str,
-        "TWILIO_ACCOUNT_SID": twilio_account_sid,
-        "TWILIO_AUTH_TOKEN": twilio_auth_token,
-        "TWILIO_PHONE_NUMBER": twilio_phone_number,
+        "SINCH_SERVICE_PLAN_ID": sinch_service_plan_id,
+        "SINCH_API_TOKEN": sinch_api_token,
+        "SINCH_PHONE_NUMBER": sinch_phone_number,
         "USER_PHONE_NUMBERS": user_phone_numbers,
     }
 
@@ -75,13 +99,23 @@ async def main() -> None:
         )
         return
 
-    assert desired_dates_str is not None
+    assert (
+        login_email
+        and login_password
+        and login_url
+        and fetch_url
+        and desired_dates_str
+        and sinch_service_plan_id
+        and sinch_api_token
+        and sinch_phone_number
+        and user_phone_numbers
+    )
+
     DESIRED_DATES = [d.strip() for d in desired_dates_str.split(",") if d.strip()]
     if not DESIRED_DATES:
         logger.error("DESIRED_DATES environment variable is empty or invalid. Exiting.")
         return
 
-    assert user_phone_numbers is not None
     USER_PHONE_NUMBERS = [p.strip() for p in user_phone_numbers.split(",") if p.strip()]
     if not USER_PHONE_NUMBERS:
         logger.error(
@@ -89,17 +123,16 @@ async def main() -> None:
         )
         return
 
-    # Create the Twilio client
-    client = Client(twilio_account_sid, twilio_auth_token)
-
-    for user_phone_number in USER_PHONE_NUMBERS:
-        # Send via Twilio
-        client.messages.create(
-            from_=twilio_phone_number,
-            to=user_phone_number,
-            body="This is a test message from your Twilio account.",
-        )
-    breakpoint()
+    # For demonstration—send a quick test message to each user number
+    # for user_phone_number in USER_PHONE_NUMBERS:
+    #     send_sinch_sms(
+    #         sinch_service_plan_id,
+    #         sinch_api_token,
+    #         sinch_phone_number,
+    #         user_phone_number,
+    #         "This is a test message from your Sinch account.",
+    #     )
+    # breakpoint()
 
     # Start the "nodriver" browser in undetected Chrome mode
     browser = await uc.start(user_data_dir=chrome_data_dir)
@@ -218,11 +251,13 @@ async def main() -> None:
             logger.info(msg_text)
 
             for user_phone_number in USER_PHONE_NUMBERS:
-                # Send via Twilio
-                client.messages.create(
-                    from_=twilio_phone_number,
-                    to=user_phone_number,
-                    body=msg_text,
+                # Send via Sinch
+                send_sinch_sms(
+                    sinch_service_plan_id,
+                    sinch_api_token,
+                    sinch_phone_number,
+                    user_phone_number,
+                    msg_text,
                 )
         else:
             logger.info("No availability found for desired dates.")

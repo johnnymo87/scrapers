@@ -22,7 +22,7 @@ We need credentials to log into the Ikon site, URLs to scrape, and dates to chec
 - **DESIRED_DATES**: A comma-separated list of dates (in `YYYY-MM-DD` format) to check for availability. For example:
   `DESIRED_DATES="2025-03-01,2025-03-02"`
 
-We use Sinch to automate notifications to the "user" (you) when the scraper finds something of value.
+We use Sinch to automate notifications to the "user" (you) when the scraper finds something of value. (I used to use Twilio, but I switched to Sinch. [Here's why](https://www.reddit.com/r/rails/comments/175e0fk/which_provider_for_sending_sms_messages_is_the/ly25agl/).)
 
 For Sinch notifications:
 - **SINCH_SERVICE_PLAN_ID**: Your Sinch account identifier.
