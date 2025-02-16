@@ -13,7 +13,7 @@ repos:
       args: ["--strict", "--pretty", "--show-error-codes"]
       additional_dependencies:
         - nodriver
-        - types-requests
+        - sinch
 - repo: https://github.com/psf/black
   rev: 24.10.0
   hooks:

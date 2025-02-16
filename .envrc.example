@@ -1,29 +1,29 @@
-# Local machine directory storing you personal Chrome settings. Found at
-# `chrome://version`. Needed because sites block browsers with profiles.
+# Local machine directory storing your personal Chrome settings. Found at
+# `chrome://version`. Needed because some sites block browsers with blank profiles.
 export CHROME_DATA_DIR=
 
 # Email used to log in.
 export LOGIN_EMAIL=
-# Passwrod used to log in.
+# Password used to log in.
 export LOGIN_PASSWORD=
 # URL to log in to.
 export LOGIN_URL=
-# URL to call to call via `fetch` in browser console to get the desired data.
+# URL to call via browser console's fetch to get the desired data.
 export FETCH_URL=
-# The desired dates to search for. This is a comma-separated list of dates in
-# the format `YYYY-MM-DD`. For example, `2021-01-01,2021-01-02`.
+# The desired dates to search for. Comma-separated list in the format `YYYY-MM-DD`.
+# For example, `2025-03-01,2025-03-02`.
 export DESIRES_DATES=
 
-# We use Twilio to automate notifications to the "user" (you) when the scraper
-# finds something of value.
+# We use the official Sinch Python SDK to automate SMS notifications.
 
-# Your Sinch account identifier.
-export SINCH_SERVICE_PLAN_ID=
-# Your Sinch account secret, used to authenticate API requests.
-export SINCH_API_TOKEN=
-# The Sinch phone number from which SMS alerts will be sent.
-export SINCH_PHONE_NUMBER=
+# Your Sinch Access Key ID.
+export SINCH_KEY_ID=
+# Your Sinch Access Key Secret.
+export SINCH_KEY_SECRET=
+# Your Sinch Project ID.
+export SINCH_PROJECT_ID=
+# The phone number from which SMS alerts will be sent (in E.164 format).
+export SINCH_FROM_NUMBER=
 # The phone numbers to which SMS alerts will be sent. This is a comma-separated
-# list of phone numbers in the format `+1XXXXXXXXXX`. For example,
-# `+15555555555,+16666666666`.
-export USER_PHONE_NUMBERS=
+# list of phone numbers in E.164 format, e.g. `+15555555555,+16666666666`.
+export SINCH_TO_NUMBERS=

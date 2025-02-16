@@ -9,7 +9,7 @@ readme = "README.md"
 requires-python = ">=3.11,<4.0"
 dependencies = [
     "nodriver (>=0.39,<0.40)",
-    "requests (>=2.32.3,<3.0.0)",
+    "sinch (>=1.1.1,<2.0.0)",
 ]
 
 
@@ -27,4 +27,3 @@ flake8-type-checking = "^3.0.0"
 mypy = "^1.14.1"
 pytest = "^8.3.4"
 pytest-cov = "^6.0.0"
-types-requests = "^2.32.0.20241016"

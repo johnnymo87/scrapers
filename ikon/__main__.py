@@ -3,7 +3,8 @@ import logging
 import os
 
 import nodriver as uc  # type: ignore[import-untyped]
-import requests
+from sinch import SinchClient  # type: ignore[import-untyped]
+from sinch.core.exceptions import SinchException  # type: ignore[import-untyped]
 
 # Configure logging at the module level
 logging.basicConfig(
@@ -13,30 +14,29 @@ logger = logging.getLogger(__name__)
 
 
 def send_sinch_sms(
-    sinch_service_plan_id: str,
-    sinch_api_token: str,
-    sinch_phone_number: str,
-    to_number: str,
+    sinch_client: SinchClient,
+    from_number: str,
+    to_numbers: list[str],
     body: str,
 ) -> None:
     """
-    Sends an SMS message using Sinch's REST API.
+    Sends an SMS message using the official Sinch Python SDK.
     """
-    url = f"https://us.sms.api.sinch.com/xms/v1/{sinch_service_plan_id}/batches"
-    payload = {
-        "from": sinch_phone_number,
-        "to": [to_number],
-        "body": body,
-    }
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {sinch_api_token}",
-    }
-    response = requests.post(url, json=payload, headers=headers)
-    if response.status_code != 201:
-        logger.warning("Failed to send to %s: %s", to_number, response.text)
-    else:
-        logger.info("Sent SMS to %s: %s", to_number, body)
+    try:
+        response = sinch_client.sms.batches.send(
+            body=body,
+            to=to_numbers,
+            from_=from_number,
+            delivery_report="none",
+        )
+        logger.info(
+            "Sent SMS to %s: %s. Batch ID: %s",
+            ", ".join(to_numbers),
+            body,
+            response.id,
+        )
+    except SinchException as exc:
+        logger.warning("Failed to send to %s. Error: %s", ", ".join(to_numbers), exc)
 
 
 async def main() -> None:
@@ -55,14 +55,15 @@ async def main() -> None:
           "https://account.ikonpass.com/api/v2/reservation-availability/88"
       • DESIRED_DATES       : Comma-separated list, e.g. "2025-03-01,2025-03-02"
 
-      For Sinch alerts:
-      • SINCH_SERVICE_PLAN_ID
-      • SINCH_API_TOKEN
-      • SINCH_PHONE_NUMBER
-      • USER_PHONE_NUMBERS
+      For Sinch alerts (via the official Sinch Python SDK):
+      • SINCH_KEY_ID
+      • SINCH_KEY_SECRET
+      • SINCH_PROJECT_ID
+      • SINCH_FROM_NUMBER
+      • SINCH_TO_NUMBERS
     """
 
-    # Fetch configuration from environment variables
+    # Fetch configuration from environment variables (Ikon + Chrome)
     chrome_data_dir = os.environ.get("CHROME_DATA_DIR")
 
     login_email = os.environ.get("LOGIN_EMAIL")
@@ -71,11 +72,12 @@ async def main() -> None:
     fetch_url = os.environ.get("FETCH_URL")
     desired_dates_str = os.environ.get("DESIRED_DATES")
 
-    # Sinch / SMS-related env vars
-    sinch_service_plan_id = os.environ.get("SINCH_SERVICE_PLAN_ID")
-    sinch_api_token = os.environ.get("SINCH_API_TOKEN")
-    sinch_phone_number = os.environ.get("SINCH_PHONE_NUMBER")
-    user_phone_numbers = os.environ.get("USER_PHONE_NUMBERS")
+    # Fetch configuration from environment variables (Sinch)
+    sinch_key_id = os.environ.get("SINCH_KEY_ID")
+    sinch_key_secret = os.environ.get("SINCH_KEY_SECRET")
+    sinch_project_id = os.environ.get("SINCH_PROJECT_ID")
+    sinch_from_number = os.environ.get("SINCH_FROM_NUMBER")
+    sinch_to_numbers_str = os.environ.get("SINCH_TO_NUMBERS")
 
     # Collect and check for missing or empty env vars
     required_env_vars = {
@@ -85,12 +87,12 @@ async def main() -> None:
         "LOGIN_URL": login_url,
         "FETCH_URL": fetch_url,
         "DESIRED_DATES": desired_dates_str,
-        "SINCH_SERVICE_PLAN_ID": sinch_service_plan_id,
-        "SINCH_API_TOKEN": sinch_api_token,
-        "SINCH_PHONE_NUMBER": sinch_phone_number,
-        "USER_PHONE_NUMBERS": user_phone_numbers,
+        "SINCH_KEY_ID": sinch_key_id,
+        "SINCH_KEY_SECRET": sinch_key_secret,
+        "SINCH_PROJECT_ID": sinch_project_id,
+        "SINCH_FROM_NUMBER": sinch_from_number,
+        "SINCH_TO_NUMBERS": sinch_to_numbers_str,
     }
-
     missing_env_vars = [k for k, v in required_env_vars.items() if not v]
     if missing_env_vars:
         logger.error(
@@ -99,40 +101,41 @@ async def main() -> None:
         )
         return
 
+    # Make mypy happy by asserting that all required env vars are non-None.
     assert (
-        login_email
+        chrome_data_dir
+        and login_email
         and login_password
         and login_url
         and fetch_url
         and desired_dates_str
-        and sinch_service_plan_id
-        and sinch_api_token
-        and sinch_phone_number
-        and user_phone_numbers
+        and sinch_key_id
+        and sinch_key_secret
+        and sinch_project_id
+        and sinch_from_number
+        and sinch_to_numbers_str
     )
 
+    # Parse desired dates
     DESIRED_DATES = [d.strip() for d in desired_dates_str.split(",") if d.strip()]
     if not DESIRED_DATES:
         logger.error("DESIRED_DATES environment variable is empty or invalid. Exiting.")
         return
 
-    USER_PHONE_NUMBERS = [p.strip() for p in user_phone_numbers.split(",") if p.strip()]
-    if not USER_PHONE_NUMBERS:
+    # Parse phone number list
+    SINCH_TO_NUMBERS = [p.strip() for p in sinch_to_numbers_str.split(",") if p.strip()]
+    if not SINCH_TO_NUMBERS:
         logger.error(
-            "USER_PHONE_NUMBERS environment variable is empty or invalid. Exiting."
+            "SINCH_TO_NUMBERS environment variable is empty or invalid. Exiting."
         )
         return
 
-    # For demonstration—send a quick test message to each user number
-    # for user_phone_number in USER_PHONE_NUMBERS:
-    #     send_sinch_sms(
-    #         sinch_service_plan_id,
-    #         sinch_api_token,
-    #         sinch_phone_number,
-    #         user_phone_number,
-    #         "This is a test message from your Sinch account.",
-    #     )
-    # breakpoint()
+    # Create the Sinch client
+    sinch_client = SinchClient(
+        key_id=sinch_key_id,
+        key_secret=sinch_key_secret,
+        project_id=sinch_project_id,
+    )
 
     # Start the "nodriver" browser in undetected Chrome mode
     browser = await uc.start(user_data_dir=chrome_data_dir)
@@ -188,7 +191,7 @@ async def main() -> None:
 
     while True:
         #
-        # 2. Perform a raw fetch request via JavaScript to get data
+        # 2. Perform a raw fetch request via JavaScript to get Ikon availability data
         #
         result = await tab.evaluate(
             f"""
@@ -232,8 +235,7 @@ async def main() -> None:
             unavailable_dates = pass_info.get("unavailable_dates", [])
 
             for date_str in DESIRED_DATES:
-                # Simple check: date is "available" if not in closed / blackout
-                # / unavailable.
+                # Mark date "available" if not in closed / blackout / unavailable
                 if (
                     date_str not in closed_dates
                     and date_str not in blackout_dates
@@ -243,22 +245,20 @@ async def main() -> None:
 
         if availability_found:
             # Build a summary message for all found availability
-            lines = ["Found availability for the following pass IDs and dates:"]
+            lines = ["Found availability for these pass IDs and dates:"]
             for pid, dates in availability_found.items():
                 lines.append(f"  - Pass ID {pid}: {dates}")
 
             msg_text = "\n".join(lines)
             logger.info(msg_text)
 
-            for user_phone_number in USER_PHONE_NUMBERS:
-                # Send via Sinch
-                send_sinch_sms(
-                    sinch_service_plan_id,
-                    sinch_api_token,
-                    sinch_phone_number,
-                    user_phone_number,
-                    msg_text,
-                )
+            # Send an SMS to each recipient
+            send_sinch_sms(
+                sinch_client,
+                sinch_from_number,
+                SINCH_TO_NUMBERS,
+                msg_text,
+            )
         else:
             logger.info("No availability found for desired dates.")
 
