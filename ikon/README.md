@@ -22,12 +22,12 @@ We need credentials to log into the Ikon site, URLs to scrape, and dates to chec
 - **DESIRED_DATES**: A comma-separated list of dates (in `YYYY-MM-DD` format) to check for availability. For example:
   `DESIRED_DATES="2025-03-01,2025-03-02"`
 
-We use Twilio to automate notifications to the "user" (you) when the scraper finds something of value.
+We use Sinch to automate notifications to the "user" (you) when the scraper finds something of value.
 
-For Twilio notifications:
-- **TWILIO_ACCOUNT_SID**: Your Twilio account identifier.
-- **TWILIO_AUTH_TOKEN**: Your Twilio account secret, used to authenticate API requests.
-- **TWILIO_PHONE_NUMBER**: The Twilio phone number from which SMS alerts will be sent.
+For Sinch notifications:
+- **SINCH_SERVICE_PLAN_ID**: Your Sinch account identifier.
+- **SINCH_API_TOKEN**: Your Sinch account secret, used to authenticate API requests.
+- **SINCH_PHONE_NUMBER**: The Sinch phone number from which SMS alerts will be sent.
 - **USER_PHONE_NUMBERs**: A comma-separated list of phone numbers to which SMS alerts will be sent. For example:
   `USER_PHONE_NUMBERS="+15555555555,+16666666666"`
 
@@ -39,13 +39,13 @@ Make sure your environment variables are set (e.g. in your `.envrc`), then run:
 poetry run python -m ikon
 ```
 
-This script logs into the Ikon site, checks resort availability at specified intervals, and sends an SMS alert via Twilio if your desired dates open up.
+This script logs into the Ikon site, checks resort availability at specified intervals, and sends an SMS alert via Sinch if your desired dates open up.
 
 ## Script Flow
 
 1. **Login**: Launches undetected Chrome (via `nodriver`) and attempts to log in using `SCRAPER_EMAIL` and `SCRAPER_PASSWORD`.
 2. **Availability Check**: Uses a JavaScript `fetch` call to query the Ikon API for availability of the dates listed in `DESIRED_DATES`.
-3. **Notifications**: If any of the desired dates are available, sends an SMS message with details (via Twilio).
+3. **Notifications**: If any of the desired dates are available, sends an SMS message with details (via Sinch).
 
 ## Notes
 

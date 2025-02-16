@@ -17,12 +17,12 @@ export DESIRES_DATES=
 # We use Twilio to automate notifications to the "user" (you) when the scraper
 # finds something of value.
 
-# Your Twilio account identifier.
-export TWILIO_ACCOUNT_SID=
-# Your Twilio account secret, used to authenticate API requests.
-export TWILIO_AUTH_TOKEN=
-# The Twilio phone number from which SMS alerts will be sent.
-export TWILIO_PHONE_NUMBER=
+# Your Sinch account identifier.
+export SINCH_SERVICE_PLAN_ID=
+# Your Sinch account secret, used to authenticate API requests.
+export SINCH_API_TOKEN=
+# The Sinch phone number from which SMS alerts will be sent.
+export SINCH_PHONE_NUMBER=
 # The phone numbers to which SMS alerts will be sent. This is a comma-separated
 # list of phone numbers in the format `+1XXXXXXXXXX`. For example,
 # `+15555555555,+16666666666`.
