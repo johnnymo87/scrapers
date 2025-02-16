@@ -1,0 +1,23 @@
+# Email used to log in.
+export SCRAPER_EMAIL=
+# Passwrod used to log in.
+export SCRAPER_PASSWORD=
+# URL to log in to.
+export LOGIN_URL=
+# URL to call to call via `fetch` in browser console to get the desired data.
+export FETCH_URL=
+# Local machine directory storing you personal Chrome settings. Found at
+# `chrome://version`. Needed because sites block browsers with profiles.
+export CHROME_DATA_DIR=
+
+# We use Twilio to automate notifications to the "user" (me) when the scraper
+# finds something of value.
+
+# Twilio account identifier.
+export TWILIO_ACCOUNT_SID=
+# Twilio account secret used to authorize API calls.
+export TWILIO_AUTH_TOKEN=
+# Twilio-provided phone number, the sender.
+export TWILIO_PHONE_NUMBER=
+# User (my) phone number, the receiver.
+export USER_PHONE_NUMBER=
