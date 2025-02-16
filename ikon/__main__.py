@@ -1,8 +1,15 @@
 import json
+import logging
 import os
 
 import nodriver as uc  # type: ignore[import-untyped]
 from twilio.rest import Client  # type: ignore[import-untyped]
+
+# Configure logging at the module level
+logging.basicConfig(
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 
 async def main() -> None:
@@ -60,19 +67,21 @@ async def main() -> None:
             user_phone_numbers,
         ]
     ):
-        print("One or more environment variables are missing. Exiting.")
+        logger.error("One or more environment variables are missing. Exiting.")
         return
 
     assert desired_dates_str is not None
     DESIRED_DATES = [d.strip() for d in desired_dates_str.split(",") if d.strip()]
     if not DESIRED_DATES:
-        print("DESIRED_DATES environment variable is empty or invalid. Exiting.")
+        logger.error("DESIRED_DATES environment variable is empty or invalid. Exiting.")
         return
 
     assert user_phone_numbers is not None
     USER_PHONE_NUMBERS = [p.strip() for p in user_phone_numbers.split(",") if p.strip()]
     if not USER_PHONE_NUMBERS:
-        print("USER_PHONE_NUMBERS environment variable is empty or invalid. Exiting.")
+        logger.error(
+            "USER_PHONE_NUMBERS environment variable is empty or invalid. Exiting."
+        )
         return
 
     # Create the Twilio client
@@ -95,7 +104,7 @@ async def main() -> None:
     )
 
     if reservation_btn:
-        print("It appears we are already logged in. Skipping login steps.")
+        logger.info("It appears we are already logged in. Skipping login steps.")
     else:
         # Proceed with login steps
         email_input = await tab.select('input[name="email"]')
@@ -103,7 +112,7 @@ async def main() -> None:
         login_button = await tab.find("Log In", best_match=True)
 
         if not email_input or not password_input or not login_button:
-            print("Could not locate login fields. Adjust selectors as needed.")
+            logger.error("Could not locate login fields. Adjust selectors as needed.")
             await tab.sleep(3)
             browser.stop()
             return
@@ -123,12 +132,12 @@ async def main() -> None:
             'a[data-testid="button"][href="/myaccount/reservations/add/"]'
         )
         if not reservation_btn:
-            print("Failed to locate 'Make a Reservation' button after login.")
+            logger.error("Failed to locate 'Make a Reservation' button after login.")
             await tab.sleep(3)
             browser.stop()
             return
 
-    print("Login successful (or already logged in). Beginning repeated checks...")
+    logger.info("Login successful (or already logged in). Beginning repeated checks...")
 
     while True:
         #
@@ -151,12 +160,14 @@ async def main() -> None:
         try:
             data = json.loads(result)
         except json.JSONDecodeError:
-            print("Unable to parse JSON from API. Will retry in 5 minutes.")
+            logger.warning("Unable to parse JSON from API. Will retry in 5 minutes.")
             await tab.sleep(300)
             continue
 
+        logger.debug("Received JSON data: %s", data)
+
         if "data" not in data:
-            print("JSON has no top-level 'data' key. Will retry in 5 minutes.")
+            logger.warning("JSON has no top-level 'data' key. Will retry in 5 minutes.")
             await tab.sleep(300)
             continue
 
@@ -190,7 +201,7 @@ async def main() -> None:
                 lines.append(f"  - Pass ID {pid}: {dates}")
 
             msg_text = "\n".join(lines)
-            print(msg_text)
+            logger.info(msg_text)
 
             for user_phone_number in USER_PHONE_NUMBERS:
                 # Send via Twilio
@@ -200,9 +211,9 @@ async def main() -> None:
                     body=msg_text,
                 )
         else:
-            print("No availability found for desired dates.")
+            logger.info("No availability found for desired dates.")
 
-        print("Sleeping for 5 minutes before the next check...")
+        logger.info("Sleeping for 5 minutes before the next check...")
         await tab.sleep(300)
 
     # No browser.stop() here – we never exit the loop unless manually interrupted.
