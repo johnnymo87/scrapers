@@ -38,12 +38,12 @@ async def main() -> None:
     # Fetch configuration from environment variables
 
     # Scraper-specific env vars
-    chrome_data_dir = os.environ["CHROME_DATA_DIR"]
+    chrome_data_dir = os.environ.get("CHROME_DATA_DIR")
 
     # Ikon-specific env vars
-    login_email = os.environ["LOGIN_EMAIL"]
-    login_password = os.environ["LOGIN_PASSWORD"]
-    login_url = os.environ["LOGIN_URL"]
+    login_email = os.environ.get("LOGIN_EMAIL")
+    login_password = os.environ.get("LOGIN_PASSWORD")
+    login_url = os.environ.get("LOGIN_URL")
     fetch_url = os.environ.get("FETCH_URL")
     desired_dates_str = os.environ.get("DESIRED_DATES")
 
@@ -51,23 +51,28 @@ async def main() -> None:
     twilio_account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
     twilio_auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
     twilio_phone_number = os.environ.get("TWILIO_PHONE_NUMBER")
-    user_phone_numbers = os.environ.get("USER_PHONE_NUMBER")
-    # If any of these are missing, exit immediately
-    if not all(
-        [
-            chrome_data_dir,
-            login_email,
-            login_password,
-            login_url,
-            fetch_url,
-            desired_dates_str,
-            twilio_account_sid,
-            twilio_auth_token,
-            twilio_phone_number,
-            user_phone_numbers,
-        ]
-    ):
-        logger.error("One or more environment variables are missing. Exiting.")
+    user_phone_numbers = os.environ.get("USER_PHONE_NUMBERS")
+
+    # Collect and check for missing or empty env vars
+    required_env_vars = {
+        "CHROME_DATA_DIR": chrome_data_dir,
+        "LOGIN_EMAIL": login_email,
+        "LOGIN_PASSWORD": login_password,
+        "LOGIN_URL": login_url,
+        "FETCH_URL": fetch_url,
+        "DESIRED_DATES": desired_dates_str,
+        "TWILIO_ACCOUNT_SID": twilio_account_sid,
+        "TWILIO_AUTH_TOKEN": twilio_auth_token,
+        "TWILIO_PHONE_NUMBER": twilio_phone_number,
+        "USER_PHONE_NUMBERS": user_phone_numbers,
+    }
+
+    missing_env_vars = [k for k, v in required_env_vars.items() if not v]
+    if missing_env_vars:
+        logger.error(
+            "The following environment variables are missing or empty: %s. Exiting.",
+            ", ".join(missing_env_vars),
+        )
         return
 
     assert desired_dates_str is not None
@@ -86,6 +91,15 @@ async def main() -> None:
 
     # Create the Twilio client
     client = Client(twilio_account_sid, twilio_auth_token)
+
+    for user_phone_number in USER_PHONE_NUMBERS:
+        # Send via Twilio
+        client.messages.create(
+            from_=twilio_phone_number,
+            to=user_phone_number,
+            body="This is a test message from your Twilio account.",
+        )
+    breakpoint()
 
     # Start the "nodriver" browser in undetected Chrome mode
     browser = await uc.start(user_data_dir=chrome_data_dir)
