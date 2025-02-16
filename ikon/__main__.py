@@ -1,107 +1,97 @@
 import os
 
-import nodriver as uc
+import nodriver as uc  # type: ignore[import-untyped]
 
 
-async def main():
+async def main() -> None:
     """
-    A simple example demonstrating how to log in, then navigate to a page,
-    type 'Windham' in a search input, pick the matching dropdown suggestion,
-    and finally click 'Continue'.
+    A scraper for "Windham" data on the Ikon ski pass website.
+
+    Environment variables used:
+      • SCRAPER_EMAIL       : e.g. "your_email@example.com"
+      • SCRAPER_PASSWORD    : e.g. "MyP@ssw0rd!"
+      • LOGIN_URL           : e.g. "https://example.com/login"
+      • CHROME_DATA_DIR     : e.g. "/path/to/some/chrome_profile_dir"
     """
 
     # Fetch configuration from environment variables
     scraper_email = os.environ["SCRAPER_EMAIL"]
     scraper_password = os.environ["SCRAPER_PASSWORD"]
     login_url = os.environ["LOGIN_URL"]
-    search_url = os.environ["SEARCH_URL"]
     chrome_data_dir = os.environ["CHROME_DATA_DIR"]
 
     # Start the "nodriver" browser in undetected Chrome mode
     browser = await uc.start(user_data_dir=chrome_data_dir)
 
     #
-    # 1. Navigate to the login page and log in
+    # 1. Navigate to the login page
     #
     tab = await browser.get(login_url)
 
-    # Example: fill in user + password fields.
-    # Adjust selectors/text to match the actual site.
-    # If your site has:
-    #   <input name="email" />
-    #   <input name="password" />
-    #   <button type="submit">Log In</button>
-    #
-    email_input = await tab.select('input[name="email"]')
-    password_input = await tab.select('input[name="password"]')
-    login_button = await tab.find("Log In", best_match=True)
+    # Optional wait in case the session auto-redirects, etc.
+    await tab.sleep(3)
 
-    if not email_input or not password_input or not login_button:
-        print("Could not locate login fields. Adjust selectors as needed.")
-        await tab.sleep(3)
-        browser.stop()
-        return
-
-    # Fill in login credentials
-    await email_input.send_keys(scraper_email)
-    await password_input.send_keys(scraper_password)
-
-    # Click the "Log In" button
-    await login_button.click()
-
-    # Optional: wait for any post-login page transitions or captchas
-    # e.g., to intervene if Incapsula challenges your login:
-    await tab.sleep(5)
-
-    #
-    # 2. Navigate to the search page (once we believe we're logged in)
-    #
-    tab = await browser.get(search_url)
-
-    # Again, optional wait if you suspect captchas / slow loads
-    await tab.sleep(5)
-
-    #
-    # 3. Type "Windham" into a search field
-    #
-    search_input = await tab.select('input[placeholder="Search"]')
-    if not search_input:
-        print("Could not find the search input. Adjust the selector for your site.")
-        await tab.sleep(3)
-        browser.stop()
-        return
-
-    await search_input.send_keys("Windham")
-
-    # 4. Pick the "Windham" suggestion
-    suggestion = await tab.select(
-        'ul > li:first-child [data-testid="resort-suggestion"]'
+    # Check if we see the "Make a Reservation" button.
+    reservation_btn = await tab.select(
+        'a[data-testid="button"][href="/myaccount/reservations/add/"]'
     )
-    if suggestion:
-        await suggestion.click()
+
+    if reservation_btn:
+        print("It appears we are already logged in. Skipping login steps.")
     else:
-        print("Could not find the dropdown suggestion. Adjust text or wait logic.")
-        await tab.sleep(3)
-        browser.stop()
-        return
+        # Proceed with the login steps since we appear not to be logged in
+        email_input = await tab.select('input[name="email"]')
+        password_input = await tab.select('input[name="password"]')
+        login_button = await tab.find("Log In", best_match=True)
+
+        if not email_input or not password_input or not login_button:
+            print("Could not locate login fields. Adjust selectors as needed.")
+            await tab.sleep(3)
+            browser.stop()
+            return
+
+        # Fill in login credentials
+        await email_input.send_keys(scraper_email)
+        await password_input.send_keys(scraper_password)
+
+        # Click the "Log In" button
+        await login_button.click()
+
+        # Optional: wait for post-login page transitions or captchas
+        await tab.sleep(5)
+
+        # After logging in, try to find the reservation button again
+        reservation_btn = await tab.select(
+            'a[data-testid="button"][href="/myaccount/reservations/add/"]'
+        )
+        if not reservation_btn:
+            print("Failed to locate 'Make a Reservation' button after login.")
+            await tab.sleep(3)
+            browser.stop()
+            return
 
     #
-    # 5. Click the "Continue" button
+    # 2. Now that we're presumably on a page where we have a valid session,
+    #    perform a raw fetch request via JavaScript.
     #
-    continue_button = await tab.find("Continue", best_match=True)
-    if continue_button:
-        await continue_button.click()
-    else:
-        print("Could not find the 'Continue' button. Adjust text or selectors.")
-        await tab.sleep(3)
-        browser.stop()
-        return
 
-    # At this point, you're presumably on the 'Windham' page or can gather info.
-    # Insert any "final scraping" logic here.
+    result = await tab.evaluate(
+        """
+    fetch("https://account.ikonpass.com/api/v2/reservation-availability/88", {
+      method: "GET",
+      credentials: "include"
+    })
+    .then(r => r.text());
+    """,
+        await_promise=True,
+    )
+    print(result)
+    breakpoint()
+
+    # At this point, you can parse or store the fetched response as needed.
 
     print("Done. Sleeping for demonstration...")
-    await tab.sleep(5)
+    # await tab.sleep(5)
 
     # Shutdown
     browser.stop()
