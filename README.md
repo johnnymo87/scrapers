@@ -1,16 +1,18 @@
 # Scrapers
 
-This repository is a collection of scripts for scraping various websites.
+This repository is a collection of python modules that automate browsing and data extraction from various websites.
 
 ## Overview
 
-- **Ikon:** Scrapes the Ikon Pass website for resort availability information.
+This project leverages Python and [Poetry](https://python-poetry.org/) to manage dependencies, as well as [Direnv](https://direnv.net/) for managing environment variables. Each module in this repository has its own README, which provides task-specific or site-specific details.
 
-## Setup
+## Installation
 
-For instructions on setting up your environment, installing Python (via pyenv), Poetry, and loading environment variables with direnv, please refer to the [Installation section](#installation) below.
-
-### Installation
+1. **Clone the repository:**
+    ```bash
+    git clone https://github.com/johnnymo87/scrapers.git
+    cd scrapers
+    ```
 
 2. **Environment variables:**
    - Rename `.envrc.example` to `.envrc` and fill in your keys.
@@ -46,18 +48,27 @@ For instructions on setting up your environment, installing Python (via pyenv), 
      ```
 
 7. **Running Tests:**
-   - Execute the test suite using pytest:
+   - Execute tests (if present) using pytest:
      ```bash
      poetry run pytest
      ```
 
-## Development and CI
+## CI Pipeline
 
-- **Local Testing:** Run tests with `poetry run pytest`.
-- **CI Pipeline:** On each push and pull request, the GitHub Actions workflow runs tests, style checks, and code coverage reports. See `.github/workflows/ci.yaml` for details.
+- A GitHub Actions workflow defined in `.github/workflows/ci.yaml` runs lint checks and tests on every push and pull request.
 
-For more module-specific details (e.g. using the email processor or TTS tools), please see the README files in the respective subdirectories.
+## Contributing
+
+1. Fork the repository in GitHub.
+2. Update your local clone to call your fork "origin" and my repository "upstream":
+   ```bash
+   git remote rename origin upstream
+   git remote add origin YOUR_FORK_URL
+   ```
+3. Make a new branch for your changes.
+4. Submit a Pull Request.
+5. Confirm that it passes the CI pipeline.
 
 ---
 
-Happy coding!
+Happy scraping!
