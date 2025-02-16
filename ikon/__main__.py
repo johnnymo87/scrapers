@@ -10,10 +10,15 @@ async def main() -> None:
     A scraper for "Windham" data on the Ikon ski pass website.
 
     Environment variables used:
-      • SCRAPER_EMAIL       : e.g. "your_email@example.com"
-      • SCRAPER_PASSWORD    : e.g. "MyP@ssw0rd!"
-      • LOGIN_URL           : e.g. "https://example.com/login"
+      For the scraper:
       • CHROME_DATA_DIR     : e.g. "/path/to/some/chrome_profile_dir"
+
+      For the Ikon site:
+      • LOGIN_EMAIL         : e.g. "your_email@example.com"
+      • LOGIN_PASSWORD      : e.g. "MyP@ssw0rd!"
+      • LOGIN_URL           : e.g. "https://example.com/login"
+      • FETCH_URL           : e.g.
+          "https://account.ikonpass.com/api/v2/reservation-availability/88"
       • DESIRED_DATES       : Comma-separated list, e.g. "2025-03-01,2025-03-02"
 
       For Twilio alerts:
@@ -24,10 +29,16 @@ async def main() -> None:
     """
 
     # Fetch configuration from environment variables
-    scraper_email = os.environ["SCRAPER_EMAIL"]
-    scraper_password = os.environ["SCRAPER_PASSWORD"]
-    login_url = os.environ["LOGIN_URL"]
+
+    # Scraper-specific env vars
     chrome_data_dir = os.environ["CHROME_DATA_DIR"]
+
+    # Ikon-specific env vars
+    login_email = os.environ["LOGIN_EMAIL"]
+    login_password = os.environ["LOGIN_PASSWORD"]
+    login_url = os.environ["LOGIN_URL"]
+    fetch_url = os.environ.get("FETCH_URL")
+    desired_dates_str = os.environ.get("DESIRED_DATES")
 
     # Twilio / SMS-related env vars
     twilio_account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
@@ -36,17 +47,23 @@ async def main() -> None:
     user_phone_number = os.environ.get("USER_PHONE_NUMBER")
     # If any of these are missing, exit immediately
     if not all(
-        [twilio_account_sid, twilio_auth_token, twilio_phone_number, user_phone_number]
+        [
+            chrome_data_dir,
+            login_email,
+            login_password,
+            login_url,
+            fetch_url,
+            desired_dates_str,
+            twilio_account_sid,
+            twilio_auth_token,
+            twilio_phone_number,
+            user_phone_number,
+        ]
     ):
-        print("One or more Twilio environment variables are missing. Exiting.")
+        print("One or more environment variables are missing. Exiting.")
         return
 
-    # Desired dates env var
-    desired_dates_str = os.environ.get("DESIRED_DATES")
-    if not desired_dates_str:
-        print("DESIRED_DATES environment variable is missing. Exiting.")
-        return
-
+    assert desired_dates_str is not None
     DESIRED_DATES = [d.strip() for d in desired_dates_str.split(",") if d.strip()]
     if not DESIRED_DATES:
         print("DESIRED_DATES environment variable is empty or invalid. Exiting.")
@@ -86,8 +103,8 @@ async def main() -> None:
             return
 
         # Fill in login credentials
-        await email_input.send_keys(scraper_email)
-        await password_input.send_keys(scraper_password)
+        await email_input.send_keys(login_email)
+        await password_input.send_keys(login_password)
 
         # Click the "Log In" button
         await login_button.click()
@@ -112,11 +129,11 @@ async def main() -> None:
         # 2. Perform a raw fetch request via JavaScript to get data
         #
         result = await tab.evaluate(
-            """
-            fetch("https://account.ikonpass.com/api/v2/reservation-availability/88", {
+            f"""
+            fetch("{fetch_url}", {{
               method: "GET",
               credentials: "include"
-            })
+            }})
             .then(r => r.text());
             """,
             await_promise=True,

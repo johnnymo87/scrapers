@@ -10,12 +10,15 @@ We use [nodriver](https://pypi.org/project/nodriver/) because it provides an und
 
 This module uses the following environment variables:
 
-- **SCRAPER_EMAIL**: The email address used to log into your Ikon account.
-- **SCRAPER_PASSWORD**: The password for your Ikon account.
+- **CHROME_DATA_DIR**: The path on your local machine to store Chrome user data, allowing nodriver to reuse browser profiles, making it appear more human-like.
+
+We need credentials to log into the Ikon site, URLs to scrape, and dates to check for availability.
+
+- **LOGIN_EMAIL**: The email address used to log into your Ikon account.
+- **LOGIN_PASSWORD**: The password for your Ikon account.
 - **LOGIN_URL**: The URL for logging into Ikon.
 - **FETCH_URL**: The endpoint for retrieving availability data.
   - Figure this out by inspecting the network requests in your browser's developer tools. For instance, for Windham, the URL is `https://account.ikonpass.com/api/v2/reservation-availability/88`.
-- **CHROME_DATA_DIR**: The path on your local machine to store Chrome user data, allowing nodriver to reuse browser profiles, making it appear more human-like.
 - **DESIRED_DATES**: A comma-separated list of dates (in `YYYY-MM-DD` format) to check for availability. For example:
   `DESIRED_DATES="2025-03-01,2025-03-02"`
 

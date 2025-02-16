@@ -1,14 +1,15 @@
+# Local machine directory storing you personal Chrome settings. Found at
+# `chrome://version`. Needed because sites block browsers with profiles.
+export CHROME_DATA_DIR=
+
 # Email used to log in.
-export SCRAPER_EMAIL=
+export LOGIN_EMAIL=
 # Passwrod used to log in.
-export SCRAPER_PASSWORD=
+export LOGIN_PASSWORD=
 # URL to log in to.
 export LOGIN_URL=
 # URL to call to call via `fetch` in browser console to get the desired data.
 export FETCH_URL=
-# Local machine directory storing you personal Chrome settings. Found at
-# `chrome://version`. Needed because sites block browsers with profiles.
-export CHROME_DATA_DIR=
 
 # We use Twilio to automate notifications to the "user" (you) when the scraper
 # finds something of value.
